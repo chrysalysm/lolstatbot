@@ -153,7 +153,7 @@ def lolskill(details):
 		return API_ROUTES.lolskill_url.format(region=region.upper(), summonername=summonerName)
 
 
-def getTeamColor(*teamid):
+def getTeamColor(teamid):
 	if teamid == 100:
 		return 'Blue Team'
 	elif teamid == 200:
