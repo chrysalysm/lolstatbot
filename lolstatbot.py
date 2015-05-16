@@ -257,7 +257,7 @@ def getLeagueInfo():
 		+ ' // LP: ' + str(LEAGUE_POINTS)\
 		+ ' // ' + lolking('leagues')
 	except:
-		return 'Summoner ' + summonerName.upper() + ' has not played any ranked matches. Summoner is under level 30'\
+		return 'Summoner ' + summonerName.upper() + ' has not played any Ranked Solo 5x5 matches.'\
 		+ ' // ' + lolking('leagues')
 
 # Get Current Match Stats
