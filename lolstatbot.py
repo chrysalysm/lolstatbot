@@ -32,10 +32,13 @@ class API_ROUTES:
 	# lol-static-data-v1.2 - static mastery data
 	masterystaticdata_url = 'https://global.api.pvp.net/api/lol/static-data/{region}/v1.2/mastery/{masteryid}?masteryData=all&api_key={key}'
 
-	# current-game-v1.0
+	# lol-static-data-v1.2 - static spell data
+	spellstaticdata_url = 'https://global.api.pvp.net/api/lol/static-data/{region}/v1.2/summoner-spell/{spellid}?api_key={key}'
+
+	# current-game-v1.0 - current game data
 	current_url = 'https://{region}.api.pvp.net/observer-mode/rest/consumer/getSpectatorGameInfo/{region_upper}1/{summonerid}?api_key={key}'
 	
-	# game-v1.3
+	# game-v1.3 - historic game data
 	last_url = 'https://{region}.api.pvp.net/api/lol/{region}/v1.3/game/by-summoner/{summonerid}/recent?api_key={key}'
 	
 	# op.gg
@@ -100,8 +103,11 @@ summonerLevel = str(summonerName_dict[summonerName]['summonerLevel'])
 # ====== RIOT API FUNCTIONS ======
 
 def about(ircname):
-	return 'Hello ' + ircname + '! I am a League of Legends Statistics Bot. My creator is blenderben [ https://github.com/blenderben/LoLStatBot ].'\
-	+ ' I am currently assigned to summoner ' + summonerName.upper() + ' [ID:' + getSummonerID() + ']. Available commands: ['\
+	return 'Hello ' + ircname + '! I am a League of Legends statistics chat bot. My creator is blenderben [ https://github.com/blenderben/LoLStatBot ].'\
+	+ ' I am currently assigned to summoner ' + summonerName.upper() + ' [ID:' + getSummonerID() + '].'
+
+def getCommands():
+	return 'Available commands: ['\
 	+ ' !about, !summoner, !league, !last, !current, !runes, !mastery, !opgg, !lolnexus, !lolking, !lolskill ]'
 
 def getSummonerInfo():
@@ -198,12 +204,21 @@ def getChampionbyID(championid):
 	name = tempDict['name'] + " " + tempDict['title']
 	return name
 
+def getSpellbyID(spellid):
+	tempDict = requests.get(API_ROUTES.spellstaticdata_url.format(region=region, spellid=int(spellid), key=api_key)).json()
+	spellName = tempDict['name']
+	return spellName
+
 # Refresh / Get Summoner ID
 def getSummonerID():
 	global summonerID
-	tempDict = requests.get(summoner_url).json()
-	summonerID = str(tempDict[summonerName]['id'])
-	return summonerID
+	try:
+		tempDict = requests.get(summoner_url).json()
+		summonerID = str(tempDict[summonerName]['id'])
+		return summonerID
+	except:
+		print 'Riot API Down'
+		return 1
 
 # Refresh / Get Summoner Level
 def getSummonerLevel():
@@ -236,7 +251,7 @@ def getSummonerMastery():
 		else:
 			i += 1
 
-	return getCurrentMastery(masteryIDList, masteryRank) + ' // Name: ' + pageName
+	return getCurrentMastery(masteryIDList, masteryRank) + ' // Mastery Name: ' + pageName
 
 def getLeagueInfo():
 	try:
@@ -257,7 +272,7 @@ def getLeagueInfo():
 		+ ' // LP: ' + str(LEAGUE_POINTS)\
 		+ ' // ' + lolking('leagues')
 	except:
-		return 'Summoner ' + summonerName.upper() + ' has not played any Ranked Solo 5x5 matches.'\
+		return 'Summoner ' + summonerName.upper() + ' has not played any Ranked Solo 5x5 matches'\
 		+ ' // ' + lolking('leagues')
 
 # Get Current Match Stats
@@ -272,6 +287,8 @@ def getCurrent(details):
 
 		CURRENT_TIME = calendar.timegm(time.gmtime())
 		CURRENT_EPOCHTIME = tempDict['gameStartTime'] / 1000
+
+
 		
 		if CURRENT_EPOCHTIME <= 0:
 			CURRENT_TIMEDIFF = 0
@@ -287,8 +304,10 @@ def getCurrent(details):
 		i = 0
 		for participant in tempDict['participants']:
 			if int(summonerID) == int(participant.get('summonerId')):
-				CURRENT_TEAM = participant.get('teamId');
+				CURRENT_TEAM = participant.get('teamId')
 				CURRENT_CHAMPION = participant.get('championId')
+				CURRENT_SPELL1 = participant.get('spell1Id')
+				CURRENT_SPELL2 = participant.get('spell2Id')
 				for rune in tempDict['participants'][i]['runes']:
 					runeIDList.append(rune.get('runeId'))
 					runeCount.append(rune.get('count'))
@@ -319,6 +338,7 @@ def getCurrent(details):
 			+ ' with ' + getChampionbyID(CURRENT_CHAMPION)\
 			+ ' on the ' + getTeamColor(CURRENT_TEAM)\
 			+ ' // Elapsed Time: ' +  getTimePlayed(CURRENT_TIMEDIFF)\
+			+ ' // Spells Chosen: ' + getSpellbyID(CURRENT_SPELL1) + ' & ' + getSpellbyID(CURRENT_SPELL2)\
 			+ ' // Mastery Distribution: ' + masteryOutput\
 			+ ' // Rune Bonuses: ' + runeBonusOutput\
 			+ ' // ' + lolnexus()
@@ -412,6 +432,9 @@ def getLast():
 	LAST_CHAMPION_ID = str(tempDict['games'][0]['championId'])
 	LAST_IPEARNED = str(tempDict['games'][0]['ipEarned'])
 	LAST_LEVEL = str(tempDict['games'][0]['stats']['level'])
+
+	LAST_SPELL1 = tempDict['games'][0]['spell1']
+	LAST_SPELL2 = tempDict['games'][0]['spell2']
 	
 	LAST_CHAMPIONSKILLED = str(tempDict['games'][0]['stats'].get('championsKilled', 0))
 	LAST_NUMDEATHS = str(tempDict['games'][0]['stats'].get('numDeaths' , 0))
@@ -423,9 +446,10 @@ def getLast():
 
 	output = summonerName.upper() + ' ' + getWinLoss(LAST_WIN)\
 	+ ' the last ' + LAST_GAMETYPE + ' ' + LAST_SUBTYPE\
-	+ ' game using ' + getChampionbyID(LAST_CHAMPION_ID)\
+	+ ' GAME using ' + getChampionbyID(LAST_CHAMPION_ID)\
 	+ ' // The game took ' + getTimePlayed(LAST_TIMEPLAYED)\
 	+ ' // ' + getKDA(LAST_CHAMPIONSKILLED, LAST_NUMDEATHS, LAST_ASSISTS) + ' KDA (' + LAST_CHAMPIONSKILLED + '/' + LAST_NUMDEATHS + '/' + LAST_ASSISTS + ')'\
+	+ ' // ' + getSpellbyID(LAST_SPELL1) + ' & ' + getSpellbyID(LAST_SPELL2) + ' spells were chosen'\
 	+ ' // ' + LAST_TOTALDAMAGECHAMPIONS + ' damage was dealt to champions'\
 	+ ' // ' + LAST_MINIONSKILLED + ' minions were killed'\
 	+ ' // ' + LAST_WARDSPLACED + ' wards were placed'\
@@ -445,13 +469,16 @@ def getNick(data):
 	return nick
 
 def getMessage(data):
-	try:
-		message = data.split(':')[2]
-		return message
-	except IndexError:
-		return 'No message'
-	except:
-		return 'No message'
+	if data.find('PRIVMSG'):
+		try:
+			message = data.split(channel, 1)[1][2:]
+			return message
+		except IndexError:
+			return 'Index Error'
+		except:
+			return 'No message'
+	else:
+		return 'Not a message'
 
 
 # ====== TIMER FUNCTIONS ======
@@ -480,6 +507,8 @@ printit()
 while True:
 
 	ircdata = irc.recv(4096) # gets output from IRC server
+	ircuser = ircdata.split(':')[1]
+	ircuser = ircuser.split('!')[0] # determines the sender of the messages
 
 	print 'DEBUG: ' + ircdata.strip(' \t\n\r')
 	print 'USER: ' + getNick(ircdata).strip(' \t\n\r')
@@ -488,6 +517,10 @@ while True:
 	# About
 	if ircdata.find(':!about') != -1:
 		irc.send('PRIVMSG ' + channel + ' :' + about(getNick(ircdata)) + '\r\n')
+
+	# Commands
+	if ircdata.find(':!commands') != -1:
+		irc.send('PRIVMSG ' + channel + ' :' + getCommands() + '\r\n')
 
 	# Last
 	if ircdata.find(':!last') != -1:
@@ -545,5 +578,6 @@ while True:
 	for i in range(len(banned)):
 		if message.find(banned[i].strip(' \t\n\r')) != -1:
 			irc.send('PRIVMSG ' + channel + ' :' + getNick(ircdata) + ', banned words are not allowed.' + '\r\n')
+			break
 		else:
-			i += 1
+			pass
