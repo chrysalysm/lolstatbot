@@ -288,8 +288,6 @@ def getCurrent(details):
 		CURRENT_TIME = calendar.timegm(time.gmtime())
 		CURRENT_EPOCHTIME = tempDict['gameStartTime'] / 1000
 
-
-		
 		if CURRENT_EPOCHTIME <= 0:
 			CURRENT_TIMEDIFF = 0
 		else:
@@ -480,7 +478,6 @@ def getMessage(data):
 	else:
 		return 'Not a message'
 
-
 # ====== TIMER FUNCTIONS ======
 
 def printit():
@@ -509,6 +506,18 @@ while True:
 	ircdata = irc.recv(4096) # gets output from IRC server
 	ircuser = ircdata.split(':')[1]
 	ircuser = ircuser.split('!')[0] # determines the sender of the messages
+
+	# Check messages for any banned words against banned.txt list
+	f = open(os.path.dirname(os.path.abspath(__file__)) + '/banned.txt', 'r')
+	banned = f.readlines()
+	message = getMessage(ircdata).lower().strip(' \t\n\r')
+	for i in range(len(banned)):
+		if message.find(banned[i].strip(' \t\n\r')) != -1:
+			irc.send('PRIVMSG ' + channel + ' :' + getNick(ircdata) + ', banned words are not allowed.  A timeout has been issued.' + '\r\n')
+			# irc.send('PRIVMSG ' + channel + ' :\/timeout ' + getNick(ircdata) + ' 5\r\n')
+			break
+		else:
+			pass
 
 	print 'DEBUG: ' + ircdata.strip(' \t\n\r')
 	print 'USER: ' + getNick(ircdata).strip(' \t\n\r')
@@ -569,15 +578,3 @@ while True:
 	# Keep Alive
 	if ircdata.find('PING') != -1:
 		irc.send('PONG ' + ircdata.split()[1] + '\r\n')
-
-	# Check messages for any banned words against banned.txt list
-	f = open(os.path.dirname(os.path.abspath(__file__)) + '/banned.txt', 'r')
-	banned = f.readlines()
-	i = 0
-	message = getMessage(ircdata).lower().strip(' \t\n\r')
-	for i in range(len(banned)):
-		if message.find(banned[i].strip(' \t\n\r')) != -1:
-			irc.send('PRIVMSG ' + channel + ' :' + getNick(ircdata) + ', banned words are not allowed.' + '\r\n')
-			break
-		else:
-			pass
